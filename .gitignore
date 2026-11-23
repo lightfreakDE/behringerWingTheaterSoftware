@@ -1,0 +1,7 @@
+bin/
+obj/
+app/
+show.json
+show.json.tmp
+*.log
+.vs/

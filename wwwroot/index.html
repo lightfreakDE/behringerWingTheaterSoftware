@@ -1,0 +1,326 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Wing Szenen</title>
+<style>
+  :root { --bg:#14161a; --panel:#1e2128; --line:#333845; --txt:#e8eaee; --dim:#8b92a1; --acc:#4da3ff; --ok:#3ecf8e; --bad:#ff6b6b; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--txt); font:15px system-ui, sans-serif; }
+  header { position:sticky; top:0; z-index:5; background:var(--panel); border-bottom:1px solid var(--line); padding:10px 16px; display:flex; flex-wrap:wrap; gap:12px; align-items:center; }
+  header .scene { flex:1; min-width:200px; font-size:18px; font-weight:600; }
+  header .scene small { display:block; color:var(--dim); font-weight:400; font-size:12px; }
+  button, select, input { font:inherit; color:var(--txt); background:#2a2f39; border:1px solid var(--line); border-radius:6px; padding:6px 10px; }
+  button { cursor:pointer; } button:hover { border-color:var(--acc); }
+  button.primary { background:var(--acc); color:#06121f; border-color:var(--acc); font-weight:600; }
+  button.big { font-size:20px; padding:10px 22px; }
+  button.x { padding:2px 8px; color:var(--bad); }
+  input[type=number] { width:70px; } input.wide { width:100%; }
+  .dot { display:inline-block; width:10px; height:10px; border-radius:50%; background:var(--bad); margin-right:6px; }
+  .dot.on { background:var(--ok); }
+  nav { display:flex; gap:4px; padding:10px 16px 0; border-bottom:1px solid var(--line); }
+  nav button { border-radius:6px 6px 0 0; border-bottom:none; } nav button.active { background:var(--acc); color:#06121f; border-color:var(--acc); }
+  main { padding:16px; max-width:1100px; margin:auto; }
+  section { background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:14px; margin-bottom:16px; }
+  h2 { margin:0 0 10px; font-size:16px; }
+  table { width:100%; border-collapse:collapse; } td, th { padding:4px 6px; text-align:left; vertical-align:middle; } th { color:var(--dim); font-weight:500; font-size:12px; }
+  .row { display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin:6px 0; }
+  .scene-card { border:1px solid var(--line); border-radius:8px; margin-bottom:8px; }
+  .scene-card.current { border-color:var(--ok); box-shadow:0 0 0 1px var(--ok); }
+  .scene-head { display:flex; gap:8px; align-items:center; padding:8px 10px; }
+  .scene-head .num { color:var(--dim); width:28px; }
+  .scene-head input { flex:1; }
+  .scene-body { padding:8px 12px 12px; border-top:1px solid var(--line); display:none; }
+  .scene-card.open .scene-body { display:block; }
+  .chips { display:flex; flex-wrap:wrap; gap:6px; }
+  .chip { padding:4px 10px; border:1px solid var(--line); border-radius:14px; cursor:pointer; user-select:none; color:var(--dim); }
+  .chip.sel { background:#1c3a57; border-color:var(--acc); color:var(--txt); }
+  .chip.grp { border-style:dashed; }
+  .plan { margin-top:10px; font-size:13px; color:var(--dim); } .plan b { color:var(--txt); }
+  .warn { color:#ffb454; }
+  pre { background:#0e1013; border:1px solid var(--line); padding:8px; border-radius:6px; max-height:260px; overflow:auto; font-size:12px; margin:0; }
+  .hint { color:var(--dim); font-size:12px; }
+  .opt { margin:10px 0 14px; } .opt .hint { margin:4px 0 0 24px; line-height:1.5; }
+  .hidden { display:none; }
+  body { padding-bottom:96px; }
+  footer { position:fixed; left:0; right:0; bottom:0; z-index:6; background:var(--panel); border-top:1px solid var(--line); padding:8px 10px; overflow-x:auto; }
+  #dcas { display:grid; grid-template-columns:repeat(16, minmax(68px, 1fr)); gap:6px; min-width:1150px; }
+  .dca { border:1px solid var(--line); border-radius:6px; padding:5px 4px 6px; text-align:center; background:#171a20; }
+  .dca .n { font-size:11px; color:var(--dim); }
+  .dca .nm { font-weight:600; font-size:13px; min-height:18px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .dca .st { margin-top:3px; font-size:11px; font-weight:700; border-radius:4px; padding:2px 0; background:#2a2f39; color:var(--dim); }
+  .dca.open { border-color:var(--ok); } .dca.open .st { background:var(--ok); color:#04170e; }
+  .dca.muted .st { background:#4a2327; color:#ff9c9c; }
+  .dca.absent { opacity:.65; border-style:dashed; }
+  .dca.empty .nm { color:var(--dim); font-weight:400; }
+  .dca.empty:not(.absent) { opacity:.5; } .dca.empty.open { border-color:var(--line); } .dca.empty.open .st { background:#2a2f39; color:var(--dim); }
+</style>
+</head>
+<body>
+<header>
+  <div class="scene" id="curScene">–<small id="curSub"></small></div>
+  <button class="big" id="btnPrev" title="Vorherige Szene">◀</button>
+  <button class="big primary" id="btnNext" title="Nächste Szene">▶</button>
+  <span><span class="dot" id="dot"></span><span id="connText">Nicht verbunden</span></span>
+  <input id="ip" placeholder="Wing-IP" size="14">
+  <button id="btnConn">Verbinden</button>
+  <button id="btnSim" title="Startet eine simulierte Wing in diesem Programm und verbindet sich damit (zum Testen ohne Pult)">Testmodus starten</button>
+  <span id="simPress" class="hidden" title="Simuliert einen Druck auf die Userbuttons am Pult">
+    Userbutton am Pult: <button id="simPrev">◀</button><button id="simNext">▶</button>
+  </span>
+</header>
+<nav>
+  <button data-tab="cast" class="active">Besetzung</button>
+  <button data-tab="scenes">Szenen</button>
+  <button data-tab="desk">Pult</button>
+</nav>
+<main>
+  <div id="tab-cast">
+    <section>
+      <h2>Schauspieler</h2>
+      <table id="actors"></table>
+      <div class="row"><input id="newActor" placeholder="Name"><button id="addActor">Schauspieler hinzufügen</button></div>
+    </section>
+    <section>
+      <h2>Rollen &amp; Wing-Kanäle</h2>
+      <table id="roles"></table>
+      <div class="row"><input id="newRole" placeholder="Rollenname"><button id="addRole">Rolle hinzufügen</button></div>
+    </section>
+    <section>
+      <h2>Gruppen <span class="hint">(Rollen, die immer zusammen auftreten, teilen sich eine DCA)</span></h2>
+      <div id="groups"></div>
+      <div class="row"><input id="newGroup" placeholder="Gruppenname"><button id="addGroup">Gruppe hinzufügen</button></div>
+    </section>
+  </div>
+
+  <div id="tab-scenes" class="hidden">
+    <section>
+      <h2>Szenen</h2>
+      <div id="scenes"></div>
+      <div class="row"><input id="newScene" placeholder="Szenenname"><button id="addScene">Szene hinzufügen</button></div>
+    </section>
+  </div>
+
+  <div id="tab-desk" class="hidden">
+    <section>
+      <h2>Userbuttons</h2>
+      <div class="row">Weiter: <input id="sNext" size="20"> Mute-Gruppe <input id="sNextMg" type="number" min="1" max="8"></div>
+      <div class="row">Zurück: <input id="sPrev" size="20"> Mute-Gruppe <input id="sPrevMg" type="number" min="1" max="8"></div>
+      <p class="hint">Jeder Userbutton schaltet eine freie Mute-Gruppe (ohne Kanäle). Das Tool erkennt die Änderung per OSC-Subscription, wechselt die Szene und setzt die Gruppe zurück.</p>
+      <button id="btnSetupButtons">Userbuttons auf der Wing einrichten</button>
+    </section>
+    <section>
+      <h2>DCA-Verhalten beim Szenenwechsel</h2>
+      <div class="opt">
+        <label><input type="checkbox" id="sStable"> <b>DCA-Nummern pro Rolle beibehalten</b></label>
+        <div class="hint"><b>An:</b> Wer schon in der vorherigen Szene dabei war, bleibt auf seiner DCA. Nur neu auftretende Rollen bekommen eine freie DCA, und DCAs von Rollen, die abgehen, werden frei. Nichts rutscht, der Mute-Zustand bleibt bei der richtigen Person. Die DCA-Nummern entsprechen dann nicht mehr der Reihenfolge in der Szene, orientiere dich an der Beschriftung.<br>
+        <b>Aus:</b> Die DCAs werden in jeder Szene neu von 1 an vergeben (Reihenfolge wie in der Szene). Rollen können dabei auf eine andere DCA wechseln. Ihr Mute-Zustand wird auf die neue DCA mitgenommen (siehe dritte Option).</div>
+      </div>
+      <div class="opt">
+        <label><input type="checkbox" id="sNewMuted"> <b>Neu auftretende Rollen starten stumm</b></label>
+        <div class="hint"><b>An:</b> Eine Rolle, die in der Szene neu dazukommt, ist nach dem Szenenwechsel stumm. Du öffnest sie, wenn sie auftritt, damit Geräusche hinter der Bühne nicht auf die Anlage laufen.<br>
+        <b>Aus:</b> Neue Rollen sind sofort offen. Das ist praktisch bei Auftritten ohne Zeit zum Öffnen, aber das Mikro ist schon vor dem Auftritt live.</div>
+      </div>
+      <div class="opt">
+        <label><input type="checkbox" id="sKeepMute"> <b>Rollen, die bleiben, behalten ihren Mute-Zustand</b></label>
+        <div class="hint"><b>An:</b> Wer schon auf der Bühne war, bleibt so, wie du ihn gerade geschaltet hast (stumm bleibt stumm, offen bleibt offen), auch wenn seine DCA wechselt.<br>
+        <b>Aus:</b> Alle Rollen, die bleiben, werden beim Szenenwechsel geöffnet, auch wenn du sie bewusst stumm geschaltet hattest.</div>
+      </div>
+      <div class="row" style="margin-top:12px">Abwesend-DCA (immer stumm): <input id="sAbsent" type="number" min="2" max="16"></div>
+      <div class="hint">Alle Kanäle von Rollen, die in der Szene nicht vorkommen, liegen auf dieser DCA und sind damit stumm. Pro Szene sind dann höchstens (Nummer − 1) Rollen/Gruppen möglich.</div>
+      <div class="row" style="margin-top:12px"><button id="btnReset">Gemerkte DCA-Belegung zurücksetzen</button></div>
+      <div class="hint">Nötig, wenn das Pult neu gestartet wurde oder du die Zuordnung auf der Wing von Hand geändert hast. Die nächste Szene wird dann wie ein Neuanfang behandelt, alle Rollen gelten als „neu“ (bei aktiver Option „starten stumm“ also stumm).</div>
+    </section>
+    <section>
+      <h2>Protokoll</h2>
+      <pre id="log"></pre>
+    </section>
+  </div>
+</main>
+<footer><div id="dcas"></div></footer>
+
+<script>
+let show = { actors:[], roles:[], groups:[], scenes:[], settings:{}, currentScene:-1 };
+let status = { connected:false, current:-1, log:[] };
+let openScene = null;
+let saveTimer = null;
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const uid = () => Math.random().toString(36).slice(2, 10);
+
+async function api(path, method = 'GET', body) {
+  const r = await fetch('/api/' + path, { method, headers: body ? {'Content-Type':'application/json'} : {}, body: body ? JSON.stringify(body) : undefined });
+  if (!r.ok) { let m = r.statusText; try { m = (await r.json()).detail || m; } catch {} throw new Error(m); }
+  return r.headers.get('content-type')?.includes('json') ? r.json() : null;
+}
+function save() { clearTimeout(saveTimer); saveTimer = setTimeout(() => api('show', 'PUT', show).catch(e => alert(e.message)), 300); }
+
+/* ---------- Besetzung ---------- */
+function renderCast() {
+  $('actors').innerHTML = '<tr><th>Name</th><th></th></tr>' + show.actors.map(a =>
+    `<tr><td><input class="wide" value="${esc(a.name)}" data-a="${a.id}"></td><td><button class="x" data-delactor="${a.id}">✕</button></td></tr>`).join('');
+  const actorOpts = sel => '<option value="">–</option>' + show.actors.map(a => `<option value="${a.id}" ${a.id === sel ? 'selected' : ''}>${esc(a.name)}</option>`).join('');
+  $('roles').innerHTML = '<tr><th>Rolle</th><th>Schauspieler</th><th>Wing-Kanal</th><th></th></tr>' + show.roles.map(r =>
+    `<tr><td><input class="wide" value="${esc(r.name)}" data-rn="${r.id}"></td>
+     <td><select data-ra="${r.id}">${actorOpts(r.actorId)}</select></td>
+     <td><input type="number" min="0" max="40" value="${r.channel || ''}" data-rc="${r.id}"></td>
+     <td><button class="x" data-delrole="${r.id}">✕</button></td></tr>`).join('');
+  $('groups').innerHTML = show.groups.map(g => `
+    <div class="scene-card" style="padding:8px 10px">
+      <div class="row"><input value="${esc(g.name)}" data-gn="${g.id}"><button class="x" data-delgroup="${g.id}">✕</button></div>
+      <div class="chips">${show.roles.map(r => `<span class="chip ${g.roleIds.includes(r.id) ? 'sel' : ''}" data-gr="${g.id}|${r.id}">${esc(r.name)}</span>`).join('')}</div>
+    </div>`).join('');
+}
+$('addActor').onclick = () => { const n = $('newActor').value.trim(); if (!n) return; show.actors.push({ id: uid(), name: n }); $('newActor').value = ''; save(); renderAll(); };
+$('addRole').onclick = () => { const n = $('newRole').value.trim(); if (!n) return; show.roles.push({ id: uid(), name: n, actorId: null, channel: 0 }); $('newRole').value = ''; save(); renderAll(); };
+$('addGroup').onclick = () => { const n = $('newGroup').value.trim(); if (!n) return; show.groups.push({ id: uid(), name: n, roleIds: [] }); $('newGroup').value = ''; save(); renderAll(); };
+$('tab-cast').addEventListener('input', e => {
+  const d = e.target.dataset;
+  if (d.a) show.actors.find(x => x.id === d.a).name = e.target.value;
+  if (d.rn) show.roles.find(x => x.id === d.rn).name = e.target.value;
+  if (d.ra) show.roles.find(x => x.id === d.ra).actorId = e.target.value || null;
+  if (d.rc) show.roles.find(x => x.id === d.rc).channel = parseInt(e.target.value) || 0;
+  if (d.gn) show.groups.find(x => x.id === d.gn).name = e.target.value;
+  save();
+});
+$('tab-cast').addEventListener('click', e => {
+  const d = e.target.dataset;
+  if (d.delactor) { show.actors = show.actors.filter(a => a.id !== d.delactor); show.roles.forEach(r => { if (r.actorId === d.delactor) r.actorId = null; }); }
+  else if (d.delrole) { show.roles = show.roles.filter(r => r.id !== d.delrole); show.groups.forEach(g => g.roleIds = g.roleIds.filter(i => i !== d.delrole)); show.scenes.forEach(s => s.items = s.items.filter(i => !(i.type === 'role' && i.id === d.delrole))); }
+  else if (d.delgroup) { show.groups = show.groups.filter(g => g.id !== d.delgroup); show.scenes.forEach(s => s.items = s.items.filter(i => !(i.type === 'group' && i.id === d.delgroup))); }
+  else if (d.gr) { const [gid, rid] = d.gr.split('|'); const g = show.groups.find(x => x.id === gid); g.roleIds = g.roleIds.includes(rid) ? g.roleIds.filter(i => i !== rid) : [...g.roleIds, rid]; }
+  else return;
+  save(); renderAll();
+});
+
+/* ---------- Szenen ---------- */
+function renderScenes() {
+  $('scenes').innerHTML = show.scenes.map((s, i) => {
+    const has = (t, id) => s.items.some(x => x.type === t && x.id === id);
+    const order = (t, id) => s.items.findIndex(x => x.type === t && x.id === id) + 1;
+    const chip = (t, id, label) => `<span class="chip ${t === 'group' ? 'grp' : ''} ${has(t, id) ? 'sel' : ''}" data-tog="${i}|${t}|${id}">${has(t, id) ? order(t, id) + ' · ' : ''}${esc(label)}</span>`;
+    return `<div class="scene-card ${i === show.currentScene ? 'current' : ''} ${i === openScene ? 'open' : ''}">
+      <div class="scene-head">
+        <span class="num">${i + 1}</span>
+        <input value="${esc(s.name)}" data-sn="${i}">
+        <button data-up="${i}" title="Nach oben">↑</button><button data-down="${i}" title="Nach unten">↓</button>
+        <button data-open="${i}">${i === openScene ? 'Zuklappen' : 'Bearbeiten'}</button>
+        <button class="primary" data-apply="${i}">Anwenden</button>
+        <button class="x" data-delscene="${i}">✕</button>
+      </div>
+      <div class="scene-body">
+        <div class="hint">Reihenfolge des Anklickens = DCA-Reihenfolge (1, 2, 3 …)</div>
+        <h2 style="margin-top:8px">Gruppen</h2><div class="chips">${show.groups.map(g => chip('group', g.id, g.name)).join('') || '<span class="hint">keine</span>'}</div>
+        <h2 style="margin-top:12px">Rollen</h2><div class="chips">${show.roles.map(r => chip('role', r.id, r.name)).join('')}</div>
+        <div class="plan" id="plan-${i}"></div>
+      </div>
+    </div>`;
+  }).join('');
+  if (openScene !== null && show.scenes[openScene]) loadPlan(openScene);
+}
+async function loadPlan(i) {
+  await api('show', 'PUT', show);
+  const p = await api('plan/' + i);
+  const el = $('plan-' + i); if (!el) return;
+  const state = a => a.isNew ? (show.settings.newRolesStartMuted ? 'neu, startet stumm' : 'neu, sofort offen')
+    : (a.prevDca && a.prevDca !== a.dca ? `bleibt, vorher DCA ${a.prevDca}` : 'bleibt auf der DCA');
+  el.innerHTML = '<div class="hint">Vorschau relativ zur aktuellen Belegung auf der Wing</div>'
+    + p.active.map(a => `<div><b>DCA ${a.dca}</b> „${esc(a.name)}“ → Kanal ${a.channels.join(', ')} <span class="hint">(${state(a)})</span></div>`).join('')
+    + `<div>Abwesend (DCA ${show.settings.absentDca}, stumm): ${p.absentChannels.length ? 'Kanal ' + p.absentChannels.join(', ') : '–'}</div>`
+    + p.warnings.map(w => `<div class="warn">⚠ ${esc(w)}</div>`).join('');
+}
+$('addScene').onclick = () => { const n = $('newScene').value.trim(); if (!n) return; show.scenes.push({ id: uid(), name: n, items: [] }); $('newScene').value = ''; openScene = show.scenes.length - 1; save(); renderAll(); };
+$('tab-scenes').addEventListener('input', e => { if (e.target.dataset.sn !== undefined) { show.scenes[+e.target.dataset.sn].name = e.target.value; save(); } });
+$('tab-scenes').addEventListener('click', async e => {
+  const d = e.target.dataset;
+  if (d.open !== undefined) { openScene = openScene === +d.open ? null : +d.open; renderScenes(); return; }
+  if (d.tog) { const [i, t, id] = d.tog.split('|'); const s = show.scenes[+i]; const idx = s.items.findIndex(x => x.type === t && x.id === id); if (idx >= 0) s.items.splice(idx, 1); else s.items.push({ type: t, id }); save(); renderScenes(); return; }
+  if (d.delscene !== undefined) { if (!confirm('Szene löschen?')) return; show.scenes.splice(+d.delscene, 1); openScene = null; save(); renderAll(); return; }
+  if (d.up !== undefined || d.down !== undefined) {
+    const i = +(d.up ?? d.down), j = d.up !== undefined ? i - 1 : i + 1;
+    if (j < 0 || j >= show.scenes.length) return;
+    [show.scenes[i], show.scenes[j]] = [show.scenes[j], show.scenes[i]];
+    if (show.currentScene === i) show.currentScene = j; else if (show.currentScene === j) show.currentScene = i;
+    if (openScene === i) openScene = j; else if (openScene === j) openScene = i;
+    save(); renderScenes(); return;
+  }
+  if (d.apply !== undefined) {
+    try { await api('show', 'PUT', show); await api(`scene/${d.apply}/apply`, 'POST'); } catch (err) { alert(err.message); }
+    refreshStatus();
+  }
+});
+
+/* ---------- Pult ---------- */
+function renderDesk() {
+  const s = show.settings;
+  $('sNext').value = s.nextButton; $('sNextMg').value = s.nextMuteGroup;
+  $('sPrev').value = s.prevButton; $('sPrevMg').value = s.prevMuteGroup;
+  $('sAbsent').value = s.absentDca; $('sStable').checked = s.stableDcas; $('sNewMuted').checked = s.newRolesStartMuted; $('sKeepMute').checked = s.stayingRolesKeepMute;
+  $('ip').value = $('ip').value || s.wingIp || '';
+}
+$('sNext').oninput = e => { show.settings.nextButton = e.target.value; save(); };
+$('sPrev').oninput = e => { show.settings.prevButton = e.target.value; save(); };
+$('sNextMg').oninput = e => { show.settings.nextMuteGroup = +e.target.value; save(); };
+$('sPrevMg').oninput = e => { show.settings.prevMuteGroup = +e.target.value; save(); };
+$('sAbsent').oninput = e => { show.settings.absentDca = +e.target.value; save(); };
+$('sStable').onchange = e => { show.settings.stableDcas = e.target.checked; save(); };
+$('sNewMuted').onchange = e => { show.settings.newRolesStartMuted = e.target.checked; save(); };
+$('sKeepMute').onchange = e => { show.settings.stayingRolesKeepMute = e.target.checked; save(); };
+$('btnReset').onclick = async () => { if (!confirm('Gemerkte DCA-Belegung wirklich zurücksetzen?')) return; try { await api('reset', 'POST'); } catch (e) { alert(e.message); } refreshStatus(); };
+$('btnSetupButtons').onclick = async () => { try { await api('show', 'PUT', show); await api('buttons/setup', 'POST'); } catch (e) { alert(e.message); } refreshStatus(); };
+
+/* ---------- Kopfzeile ---------- */
+$('btnConn').onclick = async () => {
+  try {
+    if (status.connected) await api('disconnect', 'POST');
+    else await api('connect', 'POST', { ip: $('ip').value });
+  } catch (e) { alert(e.message); }
+  refreshStatus();
+};
+$('btnNext').onclick = async () => { try { await api('next', 'POST'); } catch (e) { alert(e.message); } refreshStatus(); };
+$('btnPrev').onclick = async () => { try { await api('prev', 'POST'); } catch (e) { alert(e.message); } refreshStatus(); };
+
+$('btnSim').onclick = async () => {
+  try {
+    if (status.simulator) await api('sim/stop', 'POST');
+    else { await api('sim/start', 'POST'); $('ip').value = '127.0.0.1'; }
+  } catch (e) { alert(e.message); }
+  refreshStatus();
+};
+$('simNext').onclick = async () => { try { await api('sim/press/next', 'POST'); } catch (e) { alert(e.message); } setTimeout(refreshStatus, 400); };
+$('simPrev').onclick = async () => { try { await api('sim/press/prev', 'POST'); } catch (e) { alert(e.message); } setTimeout(refreshStatus, 400); };
+
+async function refreshStatus() {
+  try { status = await api('status'); } catch { return; }
+  const changed = show.currentScene !== status.current;
+  show.currentScene = status.current;
+  $('dot').className = 'dot' + (status.connected ? ' on' : '');
+  $('connText').textContent = status.connected ? 'Verbunden' : 'Nicht verbunden';
+  $('btnConn').textContent = status.connected ? 'Trennen' : 'Verbinden';
+  $('btnSim').textContent = status.simulator ? 'Testmodus beenden' : 'Testmodus starten';
+  $('btnSim').classList.toggle('primary', !!status.simulator);
+  $('simPress').classList.toggle('hidden', !(status.simulator && status.connected));
+  $('connText').textContent = status.connected ? (status.simulator ? 'Verbunden (Simulator)' : 'Verbunden') : 'Nicht verbunden';
+  const cur = show.scenes[status.current];
+  $('curScene').firstChild.textContent = cur ? `${status.current + 1}. ${cur.name}` : 'Keine Szene aktiv';
+  $('curSub').textContent = status.connected ? status.info : '';
+  $('log').textContent = status.log.join('\n');
+  $('dcas').innerHTML = (status.dcas || []).map(d => {
+    const cls = ['dca', d.absent ? 'absent' : '', !d.name ? 'empty' : '', d.muted === true ? 'muted' : d.muted === false ? 'open' : ''].join(' ');
+    const st = d.muted === true ? 'STUMM' : d.muted === false ? 'OFFEN' : '–';
+    return `<div class="${cls}" title="${esc(d.name)}"><div class="n">DCA ${d.dca}</div><div class="nm">${esc(d.name) || '–'}</div><div class="st">${st}</div></div>`;
+  }).join('');
+  if (changed) renderScenes();
+}
+
+document.querySelectorAll('nav button').forEach(b => b.onclick = () => {
+  document.querySelectorAll('nav button').forEach(x => x.classList.toggle('active', x === b));
+  ['cast', 'scenes', 'desk'].forEach(t => $('tab-' + t).classList.toggle('hidden', t !== b.dataset.tab));
+});
+
+function renderAll() { renderCast(); renderScenes(); renderDesk(); }
+(async () => { show = await api('show'); renderAll(); await refreshStatus(); setInterval(refreshStatus, 1500); })();
+</script>
+</body>
+</html>

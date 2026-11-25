@@ -27,6 +27,8 @@ public class Settings
     public int NextMuteGroup { get; set; } = 7;
     public int PrevMuteGroup { get; set; } = 8;
     public int AbsentDca { get; set; } = 16;
+    /// <summary>Automix-Gruppe der Wing für die auftretenden Rollen: "X", "Y" oder "OFF" (Tool fasst den Automix nicht an).</summary>
+    public string AutomixGroup { get; set; } = "X";
     /// <summary>An: wer schon in der vorherigen Szene dabei war, behält seine DCA. Aus: DCAs werden je Szene neu von 1 an vergeben.</summary>
     public bool StableDcas { get; set; } = true;
     /// <summary>An: neu auftretende Rollen starten stumm. Aus: sie sind sofort offen.</summary>

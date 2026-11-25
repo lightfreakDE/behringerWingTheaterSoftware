@@ -28,6 +28,7 @@ app.MapPut("/api/show", (Show show) =>
     show.CurrentScene = Math.Clamp(store.Show.CurrentScene, -1, show.Scenes.Count - 1);
     show.Assignment = store.Show.Assignment;
     show.Settings.AbsentDca = Math.Clamp(show.Settings.AbsentDca, 2, 16);
+    if (show.Settings.AutomixGroup is not ("X" or "Y")) show.Settings.AutomixGroup = "OFF";
     store.Replace(show);
     return Results.Ok();
 });

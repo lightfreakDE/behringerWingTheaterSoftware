@@ -127,6 +127,11 @@
         <div class="hint"><b>An:</b> Wer schon auf der Bühne war, bleibt so, wie du ihn gerade geschaltet hast (stumm bleibt stumm, offen bleibt offen), auch wenn seine DCA wechselt.<br>
         <b>Aus:</b> Alle Rollen, die bleiben, werden beim Szenenwechsel geöffnet, auch wenn du sie bewusst stumm geschaltet hattest.</div>
       </div>
+      <div class="opt">
+        <b>Automix</b> <select id="sAutomix"><option value="X">Gruppe X</option><option value="Y">Gruppe Y</option><option value="OFF">Aus</option></select>
+        <div class="hint"><b>Gruppe X / Y:</b> Beim Szenenwechsel kommen die Kanäle aller Rollen, die auf einer DCA liegen, in diese Automix-Gruppe (auch wenn sie noch stumm sind). Die Kanäle abwesender Rollen werden aus dem Automix genommen. Kanäle ohne Rolle bleiben unberührt. Der Automix nutzt den Post-Insert des Kanals: Liegt dort ein Effekt, lässt das Tool den Kanal aus und meldet das im Protokoll.<br>
+        <b>Aus:</b> Das Tool verändert den Automix nicht. Bereits gesetzte Zuordnungen bleiben auf der Wing bestehen.</div>
+      </div>
       <div class="row" style="margin-top:12px">Abwesend-DCA (immer stumm): <input id="sAbsent" type="number" min="2" max="16"></div>
       <div class="hint">Alle Kanäle von Rollen, die in der Szene nicht vorkommen, liegen auf dieser DCA und sind damit stumm. Pro Szene sind dann höchstens (Nummer − 1) Rollen/Gruppen möglich.</div>
       <div class="row" style="margin-top:12px"><button id="btnReset">Gemerkte DCA-Belegung zurücksetzen</button></div>
@@ -256,7 +261,7 @@ function renderDesk() {
   const s = show.settings;
   $('sNext').value = s.nextButton; $('sNextMg').value = s.nextMuteGroup;
   $('sPrev').value = s.prevButton; $('sPrevMg').value = s.prevMuteGroup;
-  $('sAbsent').value = s.absentDca; $('sStable').checked = s.stableDcas; $('sNewMuted').checked = s.newRolesStartMuted; $('sKeepMute').checked = s.stayingRolesKeepMute;
+  $('sAutomix').value = s.automixGroup; $('sAbsent').value = s.absentDca; $('sStable').checked = s.stableDcas; $('sNewMuted').checked = s.newRolesStartMuted; $('sKeepMute').checked = s.stayingRolesKeepMute;
   $('ip').value = $('ip').value || s.wingIp || '';
 }
 $('sNext').oninput = e => { show.settings.nextButton = e.target.value; save(); };
@@ -264,6 +269,7 @@ $('sPrev').oninput = e => { show.settings.prevButton = e.target.value; save(); }
 $('sNextMg').oninput = e => { show.settings.nextMuteGroup = +e.target.value; save(); };
 $('sPrevMg').oninput = e => { show.settings.prevMuteGroup = +e.target.value; save(); };
 $('sAbsent').oninput = e => { show.settings.absentDca = +e.target.value; save(); };
+$('sAutomix').onchange = e => { show.settings.automixGroup = e.target.value; save(); };
 $('sStable').onchange = e => { show.settings.stableDcas = e.target.checked; save(); };
 $('sNewMuted').onchange = e => { show.settings.newRolesStartMuted = e.target.checked; save(); };
 $('sKeepMute').onchange = e => { show.settings.stayingRolesKeepMute = e.target.checked; save(); };

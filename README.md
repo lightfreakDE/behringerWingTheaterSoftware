@@ -22,6 +22,10 @@ Web-Tool für Theaterproduktionen, in denen jeder Sprecher ein Headset hat und m
 - Zwei Userbuttons der Wing schalten die Szenen vor und zurück. Das Tool richtet sie ein und erkennt den Druck über eine Mute-Gruppe als Signal.
 - Der Footer zeigt alle 16 DCAs nebeneinander mit Rollenname und Zustand (stumm oder offen). Er wird live von der Wing aktualisiert.
 
+**Automix**
+- Die Kanäle der Rollen, die in der Szene auf einer DCA liegen, werden einer Automix-Gruppe der Wing (X oder Y) hinzugefügt, die Kanäle abwesender Rollen daraus entfernt. Abschaltbar.
+- Der Automix nutzt den Post-Insert des Kanals. Kanäle mit aktivem Effekt im Post-Insert werden nicht verändert.
+
 **DCA-Verhalten beim Szenenwechsel** (im Tab „Pult“ einstellbar)
 - *DCA-Nummern pro Rolle beibehalten:* Wer schon in der vorherigen Szene dabei war, bleibt auf seiner DCA. Aus: DCAs werden pro Szene neu ab 1 vergeben.
 - *Neu auftretende Rollen starten stumm:* Das Mikro wird erst beim Auftritt geöffnet. Aus: sofort offen.

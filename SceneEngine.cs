@@ -200,6 +200,8 @@ public class SceneEngine
             await _wing.SendAsync($"/dca/{absentDca}/name", "ABWESEND");
             await _wing.SendAsync($"/dca/{absentDca}/mute", 1);
 
+            await UpdateAutomixAsync(set.AutomixGroup, plan);
+
             show.Assignment = plan.Active.ToDictionary(a => a.Key, a => a.Dca);
             show.CurrentScene = index;
             _store.Replace(show);
@@ -207,6 +209,57 @@ public class SceneEngine
             await RefreshDcasAsync(); // Schreibzugriffe werden von der Wing nicht als Event zurückgemeldet
         }
         finally { _busy.Release(); }
+    }
+
+    /// <summary>
+    /// Automix der Wing läuft über den Post-Insert des Kanals (Modus AUTO_X / AUTO_Y).
+    /// Auftretende Kanäle werden der Gruppe hinzugefügt, abwesende Rollenkanäle entfernt.
+    /// Ein Post-Insert, auf dem ein Effekt aktiv ist, wird nie überschrieben.
+    /// </summary>
+    async Task UpdateAutomixAsync(string group, ScenePlan plan)
+    {
+        if (group is not ("X" or "Y")) return;
+        var target = "AUTO_" + group;
+        await _wing.SendAsync($"/cfg/amix/{group.ToLowerInvariant()}", 1);
+
+        async Task<(string Mode, bool On, string Insert)?> Read(int ch)
+        {
+            try
+            {
+                var mode = await _wing.GetAsync($"/ch/{ch}/postins/mode");
+                var on = await _wing.GetAsync($"/ch/{ch}/postins/on");
+                var ins = await _wing.GetAsync($"/ch/{ch}/postins/ins");
+                return (mode.FirstOrDefault()?.ToString() ?? "", ToBool(on) == true, ins.FirstOrDefault()?.ToString() ?? "");
+            }
+            catch (TimeoutException) { AddLog($"  Warnung: Post-Insert von Kanal {ch} nicht lesbar, Automix unverändert"); return null; }
+        }
+
+        var added = new List<int>();
+        foreach (var ch in plan.Active.SelectMany(a => a.Channels).OrderBy(c => c))
+        {
+            if (await Read(ch) is not { } s) continue;
+            if (s.On && s.Mode == "FX" && s.Insert is not ("" or "NONE"))
+            {
+                AddLog($"  Warnung: Kanal {ch} nutzt den Post-Insert für {s.Insert}, nicht in den Automix aufgenommen");
+                continue;
+            }
+            if (s.Mode != target) await _wing.SendAsync($"/ch/{ch}/postins/mode", target);
+            if (!s.On || s.Mode != target) await _wing.SendAsync($"/ch/{ch}/postins/on", 1);
+            added.Add(ch);
+        }
+
+        var removed = new List<int>();
+        foreach (var ch in plan.AbsentChannels)
+        {
+            if (await Read(ch) is not { } s) continue;
+            if (!s.Mode.StartsWith("AUTO_")) continue; // Effekt-Insert o.ä.: nicht anfassen
+            if (s.On) await _wing.SendAsync($"/ch/{ch}/postins/on", 0);
+            removed.Add(ch);
+        }
+
+        static string List(List<int> l) => l.Count == 0 ? "–" : string.Join(", ", l);
+        AddLog($"  Automix {group}: Kanäle {List(added)} aktiv, {List(removed)} entfernt");
+        if (added.Count > 16) AddLog($"  Warnung: {added.Count} Kanäle im Automix, die Wing sieht laut Doku 16 vor");
     }
 
     public async Task StepAsync(int delta)

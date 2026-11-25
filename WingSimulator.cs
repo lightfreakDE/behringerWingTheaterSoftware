@@ -66,7 +66,10 @@ public sealed class WingSimulator : IDisposable
                 else if (addr == "/*S") { _subscriber = r.RemoteEndPoint; _subUntil = DateTime.UtcNow.AddSeconds(10); }
                 else if (args.Length == 0)
                 {
-                    object v = _values.TryGetValue(addr, out var x) ? x : (addr.EndsWith("/tags") || addr.EndsWith("/name") ? "" : 0);
+                    object v = _values.TryGetValue(addr, out var x) ? x
+                        : addr.EndsWith("/postins/mode") ? "FX"
+                        : addr.EndsWith("/postins/ins") ? "NONE"
+                        : addr.EndsWith("/tags") || addr.EndsWith("/name") ? "" : 0;
                     var b = Osc.Encode(addr, v);
                     await udp.SendAsync(b, b.Length, r.RemoteEndPoint);
                 }
